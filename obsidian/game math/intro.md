@@ -1,0 +1,3 @@
+- 7 assignments
+- no exam
+- 

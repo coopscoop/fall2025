@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Markov Chain — Weather (JS + SVG)</title>
+<style>
+  :root { --ink:#111827; --muted:#6b7280; --grid:#e5e7eb; --bg:#fff; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; color: var(--ink); background: var(--bg); }
+  h1, h2 { margin: 8px 0; }
+  .panel { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 8px 0 14px; }
+  .num { font-variant-numeric: tabular-nums; }
+  label { display: inline-flex; gap: 6px; align-items: center; }
+  input[type="number"] { width: 80px; padding: 4px 6px; }
+  button { padding: 6px 12px; border: 1px solid var(--grid); background: #f9fafb; cursor: pointer; border-radius: 6px; }
+  button:hover { background: #f3f4f6; }
+  .code { background: #f9fafb; padding: 8px 10px; border:1px solid var(--grid); border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  svg { border:1px solid var(--grid); border-radius: 8px; }
+  .node { fill: #f3f4f6; stroke: var(--ink); stroke-width: 2px; }
+  .edge { stroke: var(--muted); stroke-width: 2px; marker-end: url(#arrow); }
+  .label { fill: var(--ink); font-size: 14px; user-select: none; }
+  .muted { fill: var(--muted); font-size: 13px; }
+  .grid { stroke: var(--grid); stroke-width: 1px; }
+  .barA { fill: #60a5fa; } /* analytic */
+  .barS { fill: #f97316; } /* simulated */
+</style>
+</head>
+<body>
+
+<h1>Markov Chain — Weather (JavaScript + SVG)</h1>
+<p>
+Two states: <b>Sunny (S)</b> and <b>Cloudy (C)</b>. The transition matrix T stores the probability of the <i>next</i> state given the current state.
+We update the distribution with the simple rule: <b>p<sub>t+1</sub> = p<sub>t</sub> &middot; T</b>.
+</p>
+
+<!-- Controls -->
+<div class="panel">
+  <label> P(S→S): <input id="pSS" type="number" min="0" max="1" step="0.05" value="0.70"></label>
+  <span> P(S→C): <span id="pSC" class="num">0.30</span> </span>
+  <label> P(C→C): <input id="pCC" type="number" min="0" max="1" step="0.05" value="0.50"></label>
+  <span> P(C→S): <span id="pCS" class="num">0.50</span> </span>
+</div>
+
+<div class="panel">
+  <label> Initial Sunny share p<sub>0</sub>(S): <input id="pS0" type="number" min="0" max="1" step="0.05" value="1.00"></label>
+  <span> p<sub>0</sub>(C): <span id="pC0" class="num">0.00</span> </span>
+</div>
+
+<div class="panel">
+  <button id="step1">Step +1 (analytic)</button>
+  <button id="step10">Step +10</button>
+  <button id="reset">Reset</button>
+  <span> t = <span id="time" class="num">0</span> </span>
+</div>
+
+<div class="panel">
+  <label> Monte Carlo days (N): <input id="simN" type="number" min="1" step="100" value="10000"></label>
+  <button id="runSim">Run Simulation</button>
+  <span>Sim counts → S: <span id="cntS" class="num">0</span>, C: <span id="cntC" class="num">0</span></span>
+</div>
+
+<!-- Vector x Matrix Explanation -->
+<h2>Vector × Matrix (what does p<sub>t+1</sub> = p<sub>t</sub>·T mean?)</h2>
+<div class="code" id="vmExplain">
+p_t = [ p(S), p(C) ]   and   T =
+[ [P(S→S), P(S→C)],
+  [P(C→S), P(C→C)] ]
+
+Then:
+
+p_{t+1}(S) = p_t(S)*P(S→S) + p_t(C)*P(C→S)
+p_{t+1}(C) = p_t(S)*P(S→C) + p_t(C)*P(C→C)
+</div>
+
+<!-- SVG Graph: states + edges + live labels -->
+<svg id="graph" width="760" height="320" viewBox="0 0 760 320">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#6b7280"></path>
+    </marker>
+  </defs>
+
+  <!-- Nodes -->
+  <circle id="nodeS" class="node" cx="220" cy="170" r="56"></circle>
+  <text class="label" x="220" y="162" text-anchor="middle">Sunny</text>
+  <text id="probS" class="label num" x="220" y="182" text-anchor="middle">p(S)=1.000</text>
+
+  <circle id="nodeC" class="node" cx="540" cy="170" r="56"></circle>
+  <text class="label" x="540" y="162" text-anchor="middle">Cloudy</text>
+  <text id="probC" class="label num" x="540" y="182" text-anchor="middle">p(C)=0.000</text>
+
+  <!-- Edges -->
+  <path id="edgeSS" class="edge" d="M178,128 C150,60 290,60 262,128"></path>
+  <text id="labSS" class="label" x="220" y="50" text-anchor="middle">P(S→S)=0.70</text>
+
+  <path id="edgeSC" class="edge" d="M276,170 L484,170"></path>
+  <text id="labSC" class="label" x="380" y="156" text-anchor="middle">P(S→C)=0.30</text>
+
+  <path id="edgeCS" class="edge" d="M484,182 L276,182"></path>
+  <text id="labCS" class="label" x="380" y="236" text-anchor="middle">P(C→S)=0.50</text>
+
+  <path id="edgeCC" class="edge" d="M498,128 C470,60 610,60 582,128"></path>
+  <text id="labCC" class="label" x="540" y="50" text-anchor="middle">P(C→C)=0.50</text>
+</svg>
+
+<!-- Tiny SVG bar chart: analytic vs simulated -->
+<h2>Analytic vs Simulation (share over N days)</h2>
+<svg id="bars" width="760" height="220" viewBox="0 0 760 220">
+  <!-- grid -->
+  <line x1="80" y1="180" x2="720" y2="180" class="grid"/>
+  <line x1="80" y1="120" x2="720" y2="120" class="grid"/>
+  <line x1="80" y1="60" x2="720" y2="60" class="grid"/>
+  <text x="72" y="184" class="muted" text-anchor="end">0.0</text>
+  <text x="72" y="124" class="muted" text-anchor="end">0.5</text>
+  <text x="72" y="64"  class="muted" text-anchor="end">1.0</text>
+
+  <text x="200" y="200" class="label" text-anchor="middle">Sunny</text>
+  <text x="560" y="200" class="label" text-anchor="middle">Cloudy</text>
+
+  <!-- analytic bars -->
+  <rect id="barA_S" class="barA" x="160" y="180" width="40" height="0"></rect>
+  <rect id="barA_C" class="barA" x="520" y="180" width="40" height="0"></rect>
+  <text id="txtA_S" class="label num" x="180" y="40" text-anchor="middle"></text>
+  <text id="txtA_C" class="label num" x="540" y="40" text-anchor="middle"></text>
+
+  <!-- simulation bars -->
+  <rect id="barS_S" class="barS" x="210" y="180" width="40" height="0"></rect>
+  <rect id="barS_C" class="barS" x="570" y="180" width="40" height="0"></rect>
+  <text id="txtS_S" class="label num" x="230" y="56" text-anchor="middle"></text>
+  <text id="txtS_C" class="label num" x="590" y="56" text-anchor="middle"></text>
+
+  <text x="120" y="24" class="muted">Blue = Analytic (p<sub>t</sub>), Orange = Simulation (counts / N)</text>
+</svg>
+
+<script>
+  // --- DOM helpers ---
+  const $ = id => document.getElementById(id);
+
+  // --- State ---
+  let T = [ [0.70, 0.30], [0.50, 0.50] ]; // rows = current state (S,C), cols = next (S,C)
+  let p = [1.0, 0.0]; // distribution [p(S), p(C)]
+  let t = 0;
+
+  // --- UI sync ---
+  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+  function updateEdgeLabels() {
+    $('labSS').textContent = `P(S→S)=${T[0][0].toFixed(2)}`;
+    $('labSC').textContent = `P(S→C)=${T[0][1].toFixed(2)}`;
+    $('labCS').textContent = `P(C→S)=${T[1][0].toFixed(2)}`;
+    $('labCC').textContent = `P(C→C)=${T[1][1].toFixed(2)}`;
+  }
+
+  function updateNodeLabels() {
+    $('probS').textContent = `p(S)=${p[0].toFixed(3)}`;
+    $('probC').textContent = `p(C)=${p[1].toFixed(3)}`;
+    $('time').textContent  = t;
+  }
+
+  function refreshInputs() {
+    $('pSS').value = T[0][0].toFixed(2);
+    $('pSC').textContent = (1 - T[0][0]).toFixed(2);
+    $('pCC').value = T[1][1].toFixed(2);
+    $('pCS').textContent = (1 - T[1][1]).toFixed(2);
+    $('pS0').value = p[0].toFixed(2);
+    $('pC0').textContent = p[1].toFixed(2);
+  }
+
+  // --- Vector × Matrix step: p_{t+1} = p_t * T ---
+  function stepOnce() {
+    const pS = p[0]*T[0][0] + p[1]*T[1][0];
+    const pC = p[0]*T[0][1] + p[1]*T[1][1];
+    p = [pS, pC];
+    t++;
+    render();
+  }
+
+  function stepMany(n = 10) { for (let i=0;i<n;i++) stepOnce(); }
+
+  function reset() {
+    const initS = clamp01(parseFloat($('pS0').value) || 1.0);
+    p = [initS, 1 - initS];
+    t = 0;
+    render();
+    refreshInputs();
+  }
+
+  // --- Monte Carlo simulation from current distribution p for N days ---
+  function simulateN(N=10000) {
+    let S = 0, C = 0;
+    // pick concrete initial state using p
+    let state = Math.random() < p[0] ? 0 : 1; // 0=S, 1=C
+    for (let i=0;i<N;i++) {
+      if (state === 0) { state = Math.random() < T[0][0] ? 0 : 1; }
+      else             { state = Math.random() < T[1][1] ? 1 : 0; }
+      if (state === 0) S++; else C++;
+    }
+    $('cntS').textContent = S.toLocaleString();
+    $('cntC').textContent = C.toLocaleString();
+    updateBars(p, [S/N, C/N]);
+  }
+
+  // --- Tiny bar chart (analytic vs simulated) ---
+  function updateBars(analytic, simulated) {
+    // y: 180 -> 0 height as value goes 0 -> 1 (chart area from y=180 up to ~y=20)
+    const yBase = 180, maxH = 140;
+    const hAS = maxH * analytic[0];
+    const hAC = maxH * analytic[1];
+    const hSS = maxH * simulated[0];
+    const hSC = maxH * simulated[1];
+
+    $('barA_S').setAttribute('y', yBase - hAS);
+    $('barA_S').setAttribute('height', hAS);
+    $('barA_C').setAttribute('y', yBase - hAC);
+    $('barA_C').setAttribute('height', hAC);
+
+    $('barS_S').setAttribute('y', yBase - hSS);
+    $('barS_S').setAttribute('height', hSS);
+    $('barS_C').setAttribute('y', yBase - hSC);
+    $('barS_C').setAttribute('height', hSC);
+
+    $('txtA_S').textContent = `Analytic S = ${analytic[0].toFixed(3)}`;
+    $('txtA_C').textContent = `Analytic C = ${analytic[1].toFixed(3)}`;
+    $('txtS_S').textContent = `Sim S = ${simulated[0].toFixed(3)}`;
+    $('txtS_C').textContent = `Sim C = ${simulated[1].toFixed(3)}`;
+  }
+
+  // --- Render everything (labels + bars using current p) ---
+  function render() {
+    updateEdgeLabels();
+    updateNodeLabels();
+    refreshInputs();
+    // Update bars with analytic p_t; leave simulated bars as-is until a run
+    updateBars(p, [0,0]);
+    // Update the Vector×Matrix explanation with current numbers
+    $('vmExplain').innerText =
+`p_t = [ ${p[0].toFixed(3)}, ${p[1].toFixed(3)} ]   and   T =
+[ [${T[0][0].toFixed(2)}, ${T[0][1].toFixed(2)}],
+  [${T[1][0].toFixed(2)}, ${T[1][1].toFixed(2)}] ]
+
+Then:
+
+p_{t+1}(S) = p_t(S)*P(S→S) + p_t(C)*P(C→S)
+p_{t+1}(C) = p_t(S)*P(S→C) + p_t(C)*P(C→C)`;
+  }
+
+  // --- Wire up events ---
+  $('pSS').addEventListener('input', e => {
+    const v = clamp01(parseFloat(e.target.value) || 0);
+    T[0][0] = v; T[0][1] = 1 - v;
+    render();
+  });
+  $('pCC').addEventListener('input', e => {
+    const v = clamp01(parseFloat(e.target.value) || 0);
+    T[1][1] = v; T[1][0] = 1 - v;
+    render();
+  });
+  $('pS0').addEventListener('input', e => {
+    const v = clamp01(parseFloat(e.target.value) || 0);
+    p = [v, 1 - v]; t = 0; render();
+  });
+
+  $('step1').addEventListener('click', stepOnce);
+  $('step10').addEventListener('click', () => stepMany(10));
+  $('reset').addEventListener('click', reset);
+  $('runSim').addEventListener('click', () => {
+    const N = Math.max(1, parseInt($('simN').value, 10) || 10000);
+    simulateN(N);
+  });
+
+  // init
+  render();
+</script>
+
+</body>
+</html>

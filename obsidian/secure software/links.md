@@ -1,0 +1,3 @@
+- [https://www.hacksplaining.com/lessons](https://www.hacksplaining.com/lessons)
+- [https://learn.microsoft.com/en-us/dotnet/standard/security/](https://learn.microsoft.com/en-us/dotnet/standard/security/)
+- https://learn.microsoft.com/en-us/aspnet/core/security/?view=aspnetcore-7.0
