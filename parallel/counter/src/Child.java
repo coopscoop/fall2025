@@ -1,22 +1,26 @@
-public class Child implements Runnable{
+import java.util.concurrent.atomic.AtomicInteger;
 
-    private int numberOfBlocks = 0;
-    private static volatile boolean pickUp = true;
+public class Child implements Runnable {
+
+    // private int numberOfBlocks = 0;
+    // private static volatile boolean pickUp = true;
+    private AtomicInteger numberOfBlocks = new AtomicInteger(0);
+    private static boolean pickUp = true;
 
     @Override
     public void run() {
 
         String name = Thread.currentThread().getName();
 
-        while(pickUp){
+        while (pickUp) {
             // do some stuff
-            numberOfBlocks++;
-//            System.out.println(name + " has " + this.numberOfBlocks + " blocks");
+            numberOfBlocks.incrementAndGet();
+            // System.out.println(name + " has " + this.numberOfBlocks + " blocks");
         }
-        System.out.printf(name + " is finished and has %,d\n", numberOfBlocks);
+        System.out.printf(name + " is finished and has %,d\n", numberOfBlocks.get());
     }
 
-    public static void main(String[] args) throws InterruptedException{
+    public static void main(String[] args) throws InterruptedException {
 
         Child c = new Child();
 
@@ -25,12 +29,14 @@ public class Child implements Runnable{
         Thread c3 = new Thread(c);
 
         c1.start();
-//        c2.start();
+        c2.start();
+        c3.start();
 
         Thread.sleep(1000);
         pickUp = false;
 
         c1.join();
-//        c2.join();
+        c2.join();
+        c3.join();
     }
 }
