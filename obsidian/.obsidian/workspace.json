@@ -15,7 +15,7 @@
               "state": {
                 "file": "game math/intro.md",
                 "mode": "source",
-                "source": false
+                "source": true
               },
               "icon": "lucide-file",
               "title": "intro"
@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "game math/Untitled.md",
-                "mode": "source",
-                "source": false
+                "file": "game math/Yahtzee Strategy.md",
+                "mode": "preview",
+                "source": true
               },
               "icon": "lucide-file",
-              "title": "Untitled"
+              "title": "Yahtzee Strategy"
             }
           }
         ],
@@ -184,13 +184,13 @@
       "bases:Create new base": false
     }
   },
-  "active": "ed90213fa27ac913",
+  "active": "214a3da37f2a7d7b",
   "lastOpenFiles": [
+    "secure software/links.md",
     "game math/intro.md",
-    "game math/Untitled.md",
+    "game math/Yahtzee Strategy.md",
     "1 general notes/first note.md",
     "1 general notes/vim keys cheatsheet.md",
-    "secure software/links.md",
     "1 general notes",
     "internet of things",
     "capstone",

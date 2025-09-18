@@ -1,0 +1,12 @@
+{
+    "java.project.sourcePaths": ["src"],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "/home/coop/.jdks/liberica-full-21.0.8/lib/javafx-swt.jar"
+    ],
+    "jvmArgs": [
+        "-Dmodule.path=~/jdks/liberica-full-21.0.8/jmods/javafx-controls-21.0.8/lib",
+        "-Dmodule.path=~/jdks/liberica-full-21.0.8/jmods/javafx-fxml-21.0.8/lib"
+    ]
+}
